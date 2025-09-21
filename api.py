@@ -1,33 +1,41 @@
 from flask import Flask, jsonify
 import requests
-from flask_cors import CORS  
+from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/get_url')
+# Headers anti-cache GLOBALES
+@app.after_request
+def add_no_cache_headers(response):
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    response.headers['X-Accel-Expires'] = '0'
+    return response
+
+# ✅ CAMBIO IMPORTANTE: Nueva ruta /get_url_v2
+@app.route('/get_url_v2')
 def get_url():
-    # URL del archivo raw en GitHub
-    github_url_file = "https://raw.githubusercontent.com/palmace/github.io/main/url.txt"
+    github_url_file = "https://raw.githubusercontent.com/palmace/palmace.github.io/main/url.txt"
     
     try:
-        # Realiza la petición GET para obtener el contenido del archivo
-        response = requests.get(github_url_file)
+        # Headers anti-cache para la petición a GitHub también
+        headers = {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+        }
         
-        # Verifica que la petición fue exitosa
+        response = requests.get(github_url_file, headers=headers)
+        
         if response.status_code == 200:
-            # Obtiene el contenido del archivo y lo limpia de espacios en blanco
             url_content = response.text.strip()
-            
-            # Devuelve la URL como una respuesta JSON
             return jsonify({"url": url_content})
         else:
-            return jsonify({"error": "No se pudo acceder al archivo."}, 404)
+            return jsonify({"error": "No se pudo acceder al archivo en GitHub"}), 404
             
     except requests.exceptions.RequestException as e:
-        # Manejo de errores de conexión
-        return jsonify({"error": str(e)}, 500)
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    # Ejecuta el servidor de la API
     app.run(debug=True)
